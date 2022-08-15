@@ -1,10 +1,14 @@
 #!/usr/bin/env python3
 import tcod
 
-# Import action subclasses.
-from actions import EscapeAction, MovementAction
+
 # Import event handler for computing keystroke events.
 from inputHandlers import EventHandler
+
+# Import game rendering class.
+from engine import Engine
+
+from entity import Entity
 
 
 def main() -> None:
@@ -13,9 +17,6 @@ def main() -> None:
     screen_width = 80
     screen_height = 50
 
-    # Player starting
-    player_x = int(screen_width / 2)
-    player_y = int(screen_height / 2)
 
     tileset = tcod.tileset.load_tilesheet(
         "dejavu10x10_gs_tc.png", 32, 8, tcod.tileset.CHARMAP_TCOD
@@ -23,6 +24,15 @@ def main() -> None:
 
     # event instance.
     event_handler = EventHandler()
+
+    # Create player entity with initial position, symbol and color
+    player = Entity(int(screen_width / 2), int(screen_height / 2), "@", (255, 255, 255))
+    # Create NPC entity with initial position, symbol and color
+    npc = Entity(int(screen_width / 2 - 5), int(screen_height / 2), "@", (255, 255, 0))
+    # Store created entities into set.
+    entities = {npc, player}
+
+    engine = Engine(entities=entities, eventHandler=event_handler, player=player)
 
     with tcod.context.new_terminal(
         screen_width,
@@ -33,28 +43,11 @@ def main() -> None:
     ) as context:
         root_console = tcod.Console(screen_width, screen_height, order="F")
         while True:
-            root_console.print(x=player_x, y=player_y, string="@")
+            engine.render(console = root_console, context=context)
 
-            context.present(root_console)
+            events = tcod.event.wait()
 
-            root_console.clear()
-
-            for event in tcod.event.wait():
-                # Dispatch action made to our event_handler instance for processing
-                action = event_handler.dispatch(event)
-
-                # Skip loop if key pressed is not recognised within event.
-                if action is None:
-                    continue
-
-                # Check if action sourced from event handler is a movement, and move player by distance stored if true.
-                if isinstance(action, MovementAction):
-                    player_x += action.dx
-                    player_y += action.dy
-
-                # Close program if escape action is confirmed.
-                elif isinstance(action, EscapeAction):
-                    raise SystemExit()
+            engine.handle_events(events)
 
 
 if __name__ == "__main__":
